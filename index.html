@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Medicine Price Split</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background: #f4f4f4; }
+        input { width: 70px; }
+        .error { color: red; font-weight: bold; }
+        .success { color: green; font-weight: bold; }
+        button { padding: 6px 12px; cursor: pointer; margin: 2px; }
+        .disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<h2>Upload Excel File</h2>
+<input type="file" id="upload" accept=".xlsx" />
+
+<form id="priceForm">
+<table id="dataTable">
+    <thead>
+        <tr>
+            <th>SL No</th>
+            <th>Medicine</th>
+            <th>Type</th>
+            <th>Name 1</th>
+            <th>Name 2</th>
+            <th>Name 3</th>
+            <th>Total</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<br>
+<button type="submit">Submit All</button>
+</form>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+let hiddenPrices = [];
+
+document.getElementById('upload').addEventListener('change', function(e){
+    const reader = new FileReader();
+    reader.onload = function(event){
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+        const table = document.querySelector("#dataTable tbody");
+        table.innerHTML = "";
+        hiddenPrices = [];
+
+        jsonData.forEach((row, index) => {
+            hiddenPrices[index] = row["Price"];
+
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td contenteditable="true">${row["SL No"]}</td>
+                <td contenteditable="true">${row["Medicine Name"]}</td>
+                <td contenteditable="true">${row["Type"]}</td>
+                <td><input type="number" class="p1"></td>
+                <td><input type="number" class="p2"></td>
+                <td><input type="number" class="p3"></td>
+                <td class="total">0</td>
+                <td class="status"></td>
+            `;
+
+            table.appendChild(tr);
+
+            tr.querySelectorAll("input").forEach(input => {
+                input.addEventListener("input", () => validateRow(tr, index));
+            });
+        });
+    };
+    reader.readAsArrayBuffer(e.target.files[0]);
+});
+
+function validateRow(row, index){
+    let p1 = parseFloat(row.querySelector(".p1").value) || 0;
+    let p2 = parseFloat(row.querySelector(".p2").value) || 0;
+    let p3 = parseFloat(row.querySelector(".p3").value) || 0;
+    let total = p1 + p2 + p3;
+
+    row.querySelector(".total").innerText = total;
+
+    if(total === hiddenPrices[index]){
+        row.querySelector(".status").innerHTML = "<span class='success'>Matched</span>";
+    } else {
+        row.querySelector(".status").innerHTML = "<span class='error'>Not Matched</span>";
+    }
+}
+
+document.getElementById("priceForm").addEventListener("submit", function(e){
+    e.preventDefault();
+
+    let allMatched = true;
+    document.querySelectorAll("#dataTable tbody tr").forEach((row, index) => {
+        let total = parseFloat(row.querySelector(".total").innerText);
+        if(total !== hiddenPrices[index]){
+            allMatched = false;
+        }
+    });
+
+    if(allMatched){
+        alert("All rows matched successfully ✅ Submitted!");
+    } else {
+        alert("Some rows price not matched ❌ Please correct first!");
+    }
+});
+</script>
+
+</body>
+</html>
